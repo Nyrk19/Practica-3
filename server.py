@@ -13,6 +13,7 @@ HOST = "127.0.0.1"  # Direccion de la interfaz de loopback estándar (localhost)
 #HOST = "10.0.2.15"
 PORT = 65432  # Puerto que usa el cliente (los puertos sin provilegios son > 1023)
 buffer_size = 2048
+dato = b" "
 
 # Arreglo de la lista de conexiones
 listaConexiones = []
@@ -50,42 +51,47 @@ def gestion_conexiones(listaConexiones):
 
 # Recibe los datos enviados por los clientes y se les envia una respuesta
 def recibir_datos(Client_conn, addr):
+    global dato
     try:
         print("Esperando a recibir datos... ")
-        dato = Client_conn.recv(buffer_size).decode()  # Recibe el nivel que escogio el cliente
-        print("Eligio el nivel " + dato)  # Imprime el nivel que escogio
+        """Linea agregada para la restricción
+           Hola :p"""
+        if(dato == b" "):
+            dato = Client_conn.recv(buffer_size).decode()  # Recibe el nivel que escogio el cliente
+            print("Eligio el nivel " + dato)  # Imprime el nivel que escogio
 
-        # En caso de que el dato recibido sea una "P" minuscula o mayuscula, significa que el usuario escogio el nivel de principiante
-        if dato == "p" or dato == "P":
-            print("Dificultad principiante \n")  # Se imprimira la dificultad
-            filas, columnas, minas = principiante  # Se asignara a fila = 9, columna = 9 y minas = 10
-            dificultad = "p"  # La dificultad va a ser igual a "p" (principiante)
-            tablero_vista = "A B C D E F G H I"
-        elif dato == "a" or dato == "A":
-            print("Dificultad avanzado \n")  # Se imprime la dificultad
-            filas, columnas, minas = avanzado  # Se asignara a fila = 16, columna = 16 y minas = 40
-            dificultad = "a"  # La dificultad va a ser igual a "a" (avanzado)
-            tablero_vista = " A B C D E F G H I J K L M N Ñ O"
-        else:
-            print("Esta opción no existe \n")
+            # En caso de que el dato recibido sea una "P" minuscula o mayuscula, significa que el usuario escogio el nivel de principiante
+            if dato == "p" or dato == "P":
+                print("Dificultad principiante \n")  # Se imprimira la dificultad
+                filas, columnas, minas = principiante  # Se asignara a fila = 9, columna = 9 y minas = 10
+                dificultad = "p"  # La dificultad va a ser igual a "p" (principiante)
+                tablero_vista = "A B C D E F G H I"
+            elif dato == "a" or dato == "A":
+                print("Dificultad avanzado \n")  # Se imprime la dificultad
+                filas, columnas, minas = avanzado  # Se asignara a fila = 16, columna = 16 y minas = 40
+                dificultad = "a"  # La dificultad va a ser igual a "a" (avanzado)
+                tablero_vista = " A B C D E F G H I J K L M N Ñ O"
+            else:
+                print("Esta opción no existe \n")
 
-        #   Generamos el juego y colocamos las minas
-        tablero = [[0 for j in range(columnas)] for i in range(filas)]  # genera el tablero
-        minas_colocadas = 0
-        while minas_colocadas < minas:
-            fila = random.randint(0, filas - 1)
-            columna = random.randint(0, columnas - 1)
-            if tablero[fila][columna] != -1:
-                tablero[fila][columna] = -1
-                minas_colocadas += 1
+            #   Generamos el juego y colocamos las minas
+            tablero = [[0 for j in range(columnas)] for i in range(filas)]  # genera el tablero
+            minas_colocadas = 0
+            while minas_colocadas < minas:
+                fila = random.randint(0, filas - 1)
+                columna = random.randint(0, columnas - 1)
+                if tablero[fila][columna] != -1:
+                    tablero[fila][columna] = -1
+                    minas_colocadas += 1
 
-        tablero_vista = [[0 for j in range(columnas)] for i in range(filas)]  # genera el tablero que se va a ver
-        coordenada = []
+            tablero_vista = [[0 for j in range(columnas)] for i in range(filas)]  # genera el tablero que se va a ver
+            coordenada = []
 
-        #   A todos los elementos de la matriz les vamos a poner un "-" (Recordar que esto se vera como el tablero)
-        for i in range(filas):
-            for j in range(columnas):
-                tablero_vista[i][j] = "- "
+            #   A todos los elementos de la matriz les vamos a poner un "-" (Recordar que esto se vera como el tablero)
+            for i in range(filas):
+                for j in range(columnas):
+                    tablero_vista[i][j] = "- "
+                    
 
         # En caso de que la dificultad sea principiante
         if dificultad == "p":
