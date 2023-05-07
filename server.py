@@ -5,6 +5,7 @@ import random
 import pickle
 import json
 import time
+import threading
 
 
 #   Configuracion del servidor
@@ -23,75 +24,50 @@ avanzado = (16, 16, 40)
 def clientes(socketTcp, listaConexiones):
     try:
         while True:
-            Client_conn, Client_addr = TCPServerSocket.accept() # Una vez que el evento de solicitud de conexion pasa
-            with Client_conn:  # Hacemos un open a esa conexion
-                print("Conectado a", Client_addr) # Imprimimos la conección e información del cliente
-                print("Enviando mensaje y solicitud")
-                Client_conn.sendall(b"Bienvenido al Buscaminas \n (P) Principiante \n (A) Avanzado \nElige la dificultad: ")
-                print("Esperando a recibir datos... ")
+            Client_conn, Client_addr = socketTcp.accept() # Una vez que el evento de solicitud de conexion pasa
+            print("Conectado a", Client_addr) # Imprimimos la conección e información del cliente
+            print("Enviando mensaje y solicitud")
+            Client_conn.sendall(b"Bienvenido al Buscaminas \n (P) Principiante \n (A) Avanzado \nElige la dificultad: ")
 
-                listaConexiones.append(Client_conn) # Lo agrega a la lista de conexiones
+            listaConexiones.append(Client_conn) # Lo agrega a la lista de conexiones
 
-                # Para cada cliente que se conecta se crea un hilo
-                # Invoca la función recibir_datos() para manejar la comunicación de los datos
-                thread_read = threading.Thread(target=recibir_datos, args=[Client_conn, Client_addr])
-                thread_read.start()
-                gestion_conexiones(listaConexiones)  # Se llama para gestionar la lista de conexiones y eliminar las conexiones inactivas
+            # Para cada cliente que se conecta se crea un hilo
+            # Invoca la función recibir_datos() para manejar la comunicación de los datos
+            thread_read = threading.Thread(target=recibir_datos, args=[Client_conn, Client_addr])
+            thread_read.start()
+            gestion_conexiones(listaConexiones)
     except Exception as e:
         print(e)
+
+def gestion_conexiones(listaConexiones):
+    for conn in listaConexiones:
+        if conn.fileno() == -1:
+            listaConexiones.remove(conn)
+    print("hilos activos:", threading.active_count())  # Imprimimos los hilos activos
+    print("enum", threading.enumerate())
+    print("conexiones: ", len(listaConexiones))  # Imprimimos las conexiones que tenemos en el arreglo "listaconexiones"
+    print(listaConexiones)  # Imprime las conexiones
 
 # Recibe los datos enviados por los clientes y se les envia una respuesta
-def recibir_datos(conn, addr):
+def recibir_datos(Client_conn, addr):
     try:
-        cur_thread = threading.current_thread()
-        print("Recibiendo datos del cliente {} en el {}".format(addr, cur_thread.name)) # Imprimimos que cliente nos lo esta enviando y con que hilo
-        while True:
-            data = conn.recv(1024) # Esperamos a recibir el dato
-            response = bytes("{}: {}".format(cur_thread.name, data), 'ascii')
-            if not data: # Si no se recibe ningun dato termina la cominicación
-                print("Fin.")
-                break
-            conn.sendall(response) # Le envia un mensaje al cliente
-
-    # Si ocurre alguna excepción durante la comunicación se cierra la conexión
-    except Exception as e:
-        print(e)
-    finally:
-        conn.close()
-
-
-
-
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Creamos el mismo tipo de socket
-    TCPServerSocket.bind((HOST, PORT)) # Nos va a ser la liga entre el coket y la dirección IP
-    TCPServerSocket.listen() # Para poder aceptar conexciones
-    print("Servidor de Buscaminas activo")
-
-    # Al momento de aceptarlo el resultado se va a asignar a dos variables
-    Client_conn, Client_addr = TCPServerSocket.accept() # Una vez que el evento de solicitud de conexion pasa
-    with Client_conn: # Hacemos un open a esa conexion
-        print("Conectado a", Client_addr) # Imprimimos la conección e información del cliente
-        print("Enviando mensaje y solicitud")
-        Client_conn.sendall(b"Bienvenido al Buscaminas \n (P) Principiante \n (A) Avanzado \nElige la dificultad: ")
-
         print("Esperando a recibir datos... ")
-        dato = Client_conn.recv(buffer_size).decode() # Recibe el nivel que escogio el cliente
-        print("Eligio el nivel " + dato) # Imprime el nivel que escogio
+        dato = Client_conn.recv(buffer_size).decode()  # Recibe el nivel que escogio el cliente
+        print("Eligio el nivel " + dato)  # Imprime el nivel que escogio
 
         # En caso de que el dato recibido sea una "P" minuscula o mayuscula, significa que el usuario escogio el nivel de principiante
         if dato == "p" or dato == "P":
-            print("Dificultad principiante \n") # Se imprimira la dificultad
-            filas, columnas, minas = principiante # Se asignara a fila = 9, columna = 9 y minas = 10
-            dificultad = "p" # La dificultad va a ser igual a "p" (principiante)
+            print("Dificultad principiante \n")  # Se imprimira la dificultad
+            filas, columnas, minas = principiante  # Se asignara a fila = 9, columna = 9 y minas = 10
+            dificultad = "p"  # La dificultad va a ser igual a "p" (principiante)
             tablero_vista = "A B C D E F G H I"
         elif dato == "a" or dato == "A":
-            print("Dificultad avanzado \n") # Se imprime la dificultad
-            filas, columnas, minas = avanzado # Se asignara a fila = 16, columna = 16 y minas = 40
-            dificultad = "a" # La dificultad va a ser igual a "a" (avanzado)
+            print("Dificultad avanzado \n")  # Se imprime la dificultad
+            filas, columnas, minas = avanzado  # Se asignara a fila = 16, columna = 16 y minas = 40
+            dificultad = "a"  # La dificultad va a ser igual a "a" (avanzado)
             tablero_vista = " A B C D E F G H I J K L M N Ñ O"
         else:
             print("Esta opción no existe \n")
-
 
         #   Generamos el juego y colocamos las minas
         tablero = [[0 for j in range(columnas)] for i in range(filas)]  # genera el tablero
@@ -103,20 +79,20 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Cr
                 tablero[fila][columna] = -1
                 minas_colocadas += 1
 
-
         tablero_vista = [[0 for j in range(columnas)] for i in range(filas)]  # genera el tablero que se va a ver
         coordenada = []
 
         #   A todos los elementos de la matriz les vamos a poner un "-" (Recordar que esto se vera como el tablero)
         for i in range(filas):
             for j in range(columnas):
-                    tablero_vista[i][j] = "- "
+                tablero_vista[i][j] = "- "
 
         # En caso de que la dificultad sea principiante
         if dificultad == "p":
             #   Declaramos variables
             gano = 0
             perdio = 0
+            mismo = 0
             llave = 0
             repetir = 0
             conteo = 0
@@ -125,20 +101,19 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Cr
             while gano != 1 or perdio != 1:
 
                 # Enviamos el tablero
-                tablero_v = "\n".join([" ".join(fila) for fila in tablero_vista]) # Aqui se almacenara todos los elementos de la matriz en forma de tablero
-                Client_conn.sendall(tablero_v.encode()) # Enviamos la matriz al cliente
+                tablero_v = "\n".join([" ".join(fila) for fila in tablero_vista])  # Aqui se almacenara todos los elementos de la matriz en forma de tablero
+                Client_conn.sendall(tablero_v.encode())  # Enviamos la matriz al cliente
 
                 # ------------------------------------------------------------------------------------------------------------
                 # Recibe la coordenada
                 print("Esperando a recibir coordenadas...")
 
                 #   Se recibe la columna que envio el cliente
-                columna_letra = Client_conn.recv(buffer_size).decode() # No va a avanzar el programa hasta que se reciba la columna
+                columna_letra = Client_conn.recv(buffer_size).decode()  # No va a avanzar el programa hasta que se reciba la columna
                 print(columna_letra)
 
-
-                #Se recibe la fila que envio el cliente
-                fila_letra = Client_conn.recv(buffer_size).decode() # No va a avanzar el programa hasta que se reciba la fila
+                # Se recibe la fila que envio el cliente
+                fila_letra = Client_conn.recv(buffer_size).decode()  # No va a avanzar el programa hasta que se reciba la fila
                 print(fila_letra)
 
                 # Dependiendo de la letra que envio el cliente es lo que valdra la variable fila
@@ -161,7 +136,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Cr
                 elif fila_letra == "9":
                     fila = 8
                 else:
-                    print("Esta opcion no es valida") # En caso de que no sea ninguna de las opciones anteriores
+                    print("Esta opcion no es valida")  # En caso de que no sea ninguna de las opciones anteriores
 
                 # Dependiendo de la letra que envio el cliente es lo que valdra la variable columna
                 if columna_letra == "A" or columna_letra == "a":
@@ -183,14 +158,20 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Cr
                 elif columna_letra == "I" or columna_letra == "i":
                     columna = 8
                 else:
-                    print("Esta opcion no es valida") # En caso de que no sea ninguna de las opciones anteriores
+                    print("Esta opcion no es valida")  # En caso de que no sea ninguna de las opciones anteriores
 
+                mismo = 1
+                print("\n",mismo)
                 print("columna:")
-                print(columna) # Se imprime el valor de la variable columna la cual va a ser la columna que cambiara en la matriz
+                print(columna)  # Se imprime el valor de la variable columna la cual va a ser la columna que cambiara en la matriz
                 print("fila:")
-                print(fila) # Se imprime el valor de la variable fila, la cual sera la fila que cambiara en la matriz
+                print(fila)  # Se imprime el valor de la variable fila, la cual sera la fila que cambiara en la matriz
 
                 # Con las varibles anteriormente impresas. Localizaremos la coordenada de la matriz "tablero_vista" y le colocamos una x
+                #if (tablero_vista[fila][columna] == "X "):
+                #mismo = 1
+                #print(mismo)
+
                 tablero_vista[fila][columna] = "X "
 
                 # Le asignaremos un 1 a esa coordenada en la matriz
@@ -198,17 +179,22 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Cr
                 # En caso de que sea igual a -1 significa que perdio
                 if tablero[fila][columna] == -1:
                     perdio = 1
-                    Client_conn.sendall(b"p") # Se le envia una p al cliente para que sepa que perdio
+                    Client_conn.sendall(b"p")  # Se le envia una p al cliente para que sepa que perdio
                 # En caso de que ya abrio todas las casillas y ninguna era una mina
                 elif conteo == 71:
-                    Client_conn.sendall(b"g") # Se le envia una g al cliente para que sepa que perdio
+                    Client_conn.sendall(b"g")  # Se le envia una g al cliente para que sepa que perdio
+                # En caso de que ya se haya puesto la misma casilla
+                elif mismo == 1:
+                    Client_conn.sendall(b"m")
+                    print(mismo)
                 # En este caso no piso ninguna mina y tampoco a completado en abrir todas las casillas
                 else:
-                    Client_conn.sendall(b"s") # Se le envia una s al cliente para que sepa que perdio
-                    conteo = conteo + 1 # Se le sumará un 1 a la variable conteo
+                    Client_conn.sendall(b"s")  # Se le envia una s al cliente para que sepa que perdio
+                    conteo = conteo + 1  # Se le sumará un 1 a la variable conteo
         else:
             gano = 0
             perdio = 0
+            mismo = 0
             llave = 0
             repetir = 0
             conteo = 0
@@ -305,6 +291,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Cr
                 print("fila:")
                 print(fila)
 
+
+
+                if tablero_vista[fila][columna] == "X ":
+                    mismo = 1
+
+
                 tablero_vista[fila][columna] = "X "
 
                 if tablero[fila][columna] == -1:
@@ -312,8 +304,28 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Cr
                     Client_conn.sendall(b"p")
                 elif conteo == 216:
                     Client_conn.sendall(b"g")
+                elif mismo == 1:
+                    Client_conn.sendall(b"m")
                 else:
                     Client_conn.sendall(b"s")
                     conteo = conteo + 1
 
-        print("El juego ha terminado") # Imprimira que el juego ha terminado
+        print("El juego ha terminado")  # Imprimira que el juego ha terminado
+
+    # Si ocurre alguna excepción durante la comunicación se cierra la conexión
+    except Exception as e:
+        print(e)
+    finally:
+        Client_conn.close()
+
+
+
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as TCPServerSocket:  # Creamos el mismo tipo de socket
+    TCPServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # Establece las opciones de socket de un socket existente para ajustar su comportamiento y configuración
+    TCPServerSocket.bind((HOST, PORT)) # Nos va a ser la liga entre el coket y la dirección IP
+    TCPServerSocket.listen() # Para poder aceptar conexciones
+    print("Servidor de Buscaminas activo")
+    clientes(TCPServerSocket, listaConexiones)
+
+
